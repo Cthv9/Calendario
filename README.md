@@ -4,7 +4,7 @@ Una **Progressive Web App (PWA)** semplice e leggera che mostra un **calendario 
 Funziona **offline**, è **installabile** e utilizza **solo un file HTML**!
 
 ## 🌐 Demo Online
-👉 [Apri la PWA su GitHub Pages](https://TUO-UTENTE.github.io/NOME-REPO/)
+👉 [Apri la PWA su GitHub Pages](https://cthv9.github.io/Calendario/)
 
 ## ⚙️ Funzionalità
 - 📆 Vista mensile con numeri di settimana (ISO-8601)  
