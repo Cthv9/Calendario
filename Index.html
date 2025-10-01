@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendario • Numero Settimane</title>
+  <meta name="description" content="PWA che mostra un calendario mensile con numero delle settimane (ISO-8601)."/>
+
+  <!-- Manifest placeholder (we'll replace href with a Blob URL at runtime) -->
+  <link id="manifest-link" rel="manifest" href="#" />
+  <link rel="apple-touch-icon" id="apple-icon" href="#" />
+  <meta name="theme-color" content="#0ea5e9" />
+
+  <style>
+    :root{
+      --bg: #0b1220;
+      --card: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #0ea5e9; /* sky-500 */
+      --accent-2: #38bdf8; /* sky-400 */
+      --ring: #22d3ee;
+      --today: #1e293b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius-xl: 16px;
+      --radius-2xl: 24px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 700px at 20% -10%, #111827 0%, #0b1220 60%, #0b1220 100%);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    }
+
+    .wrapper{max-width:1000px; margin: 32px auto; padding: 0 16px;}
+
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px; user-select:none;
+    }
+    .brand .logo{width:36px; height:36px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow)}
+    .brand .logo svg{width:22px; height:22px; color:white}
+    .brand h1{font-size:1.1rem; margin:0}
+    .brand small{display:block; color:var(--muted)}
+
+    .controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+    button, select{
+      background:var(--card);
+      color:var(--text);
+      border:1px solid #1f2937; border-radius:12px; padding:10px 12px; cursor:pointer;
+      box-shadow: var(--shadow);
+    }
+    button:hover{border-color:#334155}
+    button:focus, select:focus{outline:2px solid var(--ring); outline-offset:2px}
+
+    .pill{
+      background: linear-gradient(135deg, rgba(56,189,248,.15), rgba(14,165,233,.15));
+      border:1px solid rgba(56,189,248,.25);
+      padding:8px 12px; border-radius: 9999px; color:#cbe7fb;
+    }
+
+    .calendar{
+      background: rgba(17,24,39,.8);
+      border:1px solid #1f2937; border-radius: var(--radius-2xl);
+      overflow:hidden; box-shadow: var(--shadow);
+    }
+
+    .cal-header{ display:grid; grid-template-columns: 70px repeat(7, 1fr); }
+    .cal-header div{
+      padding:12px; text-align:center; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; font-size:.8rem; border-bottom:1px solid #1f2937;
+    }
+
+    .grid{ display:grid; grid-template-columns: 70px repeat(7, 1fr); }
+
+    .weekcell{
+      display:flex; align-items:center; justify-content:center; font-weight:700; color:#a5e3ff; background: linear-gradient(180deg, rgba(56,189,248,.08), rgba(14,165,233,.05));
+      border-right:1px solid #1f2937; border-bottom:1px solid #1f2937;
+    }
+
+    .day{
+      min-height:96px; padding:10px; border-right:1px solid #1f2937; border-bottom:1px solid #1f2937; position:relative;
+      display:flex; align-items:flex-start; justify-content:flex-end; flex-direction:column;
+    }
+    .day .date{
+      position:absolute; top:8px; right:10px; font-weight:600; color:var(--muted); font-size:.9rem;
+    }
+    .day.today{ background:linear-gradient(180deg, rgba(148,163,184,.12), rgba(2,6,23,.0)); outline:1px dashed rgba(56,189,248,.4); outline-offset:-4px }
+    .day.out{ opacity:.35 }
+
+    .legend{ display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 24px 0; color:var(--muted)}
+    .legend .badge{ padding:6px 10px; border:1px solid #1f2937; border-radius:999px; background:#0f172a; }
+
+    footer{ margin-top:16px; color:var(--muted); font-size:.9rem; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .a2hs{ display:flex; align-items:center; gap:8px }
+    .a2hs button{ background:linear-gradient(135deg, var(--accent), var(--accent-2)); border:none; color:white; font-weight:700 }
+    .hidden{ display:none !important }
+
+    @media (max-width:720px){
+      .cal-header div:nth-child(n+2){ font-size:.7rem }
+      .day{ min-height:75px }
+      .weekcell{ font-size:.95rem }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <header>
+      <div class="brand" aria-label="Intestazione app">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="4"/>
+            <path d="M3 10h18"/>
+            <path d="M8 2v4M16 2v4"/>
+            <path d="M7 14h3v3H7zM14 14h3v3h-3z"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Calendario con Numero Settimane</h1>
+          <small>Standard ISO‑8601 • PWA offline</small>
+        </div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Controlli del calendario">
+        <button id="prev" aria-label="Mese precedente">◀</button>
+        <div class="pill" id="label" aria-live="polite"></div>
+        <button id="todayBtn">Oggi</button>
+        <button id="next" aria-label="Mese successivo">▶</button>
+        <select id="localePicker" title="Lingua">
+          <option value="it-IT" selected>Italiano</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="fr-FR">Français</option>
+          <option value="es-ES">Español</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="legend">
+      <span class="badge">Lunedì come primo giorno</span>
+      <span class="badge">Numeri settimana ISO (1–53)</span>
+      <span class="badge">Installabile / Offline</span>
+    </div>
+
+    <section class="calendar" aria-label="Calendario mensile">
+      <div class="cal-header" id="weekdayRow"></div>
+      <div class="grid" id="grid" role="grid" aria-readonly="true"></div>
+    </section>
+
+    <footer>
+      <div class="a2hs">
+        <button id="installBtn" class="hidden">Installa app</button>
+        <span id="installHint" class="hidden">Puoi installare l'app dal menu del browser.</span>
+      </div>
+      <span>© <span id="yearCopy"></span> • MIT</span>
+    </footer>
+  </div>
+
+  <script>
+    // ---------- Utilità calendario ----------
+    const state = {
+      today: new Date(),
+      view: new Date(),
+      locale: 'it-IT'
+    };
+
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+
+    // ISO week number (YYYY-ww) — Monday=1, Sunday=7
+    function getISOWeek(date){
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      // Thursday in current week decides the year.
+      const dayNum = d.getUTCDay() || 7; // Sun=7
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return { year: d.getUTCFullYear(), week: weekNo };
+    }
+
+    function getMonthMatrix(viewDate){
+      // Build a matrix of 6 weeks x 7 days starting Monday
+      const first = startOfMonth(viewDate);
+      const last = endOfMonth(viewDate);
+      const firstDay = (first.getDay() + 6) % 7; // Monday=0
+      const daysInMonth = last.getDate();
+
+      const cells = [];
+      // days before the 1st
+      for(let i=0;i<firstDay;i++){
+        const d = new Date(first);
+        d.setDate(d.getDate() - (firstDay - i));
+        cells.push({ date: d, current:false });
+      }
+      // current month days
+      for(let d=1; d<=daysInMonth; d++){
+        cells.push({ date: new Date(viewDate.getFullYear(), viewDate.getMonth(), d), current:true });
+      }
+      // fill to 6 weeks (42 cells)
+      const extra = 42 - cells.length;
+      for(let i=1;i<=extra;i++){
+        const d = new Date(last);
+        d.setDate(last.getDate()+i);
+        cells.push({ date: d, current:false });
+      }
+      return cells;
+    }
+
+    function renderWeekdayHeader(){
+      const row = document.getElementById('weekdayRow');
+      row.innerHTML = '';
+      const wk = document.createElement('div');
+      wk.textContent = 'Sett.';
+      row.appendChild(wk);
+
+      const fmt = new Intl.DateTimeFormat(state.locale, { weekday:'short' });
+      // Monday-first order
+      const tmp = new Date(2023, 0, 2); // Mon Jan 2, 2023
+      for(let i=0;i<7;i++){
+        const d = new Date(tmp);
+        d.setDate(tmp.getDate()+i);
+        const cell = document.createElement('div');
+        cell.textContent = fmt.format(d);
+        row.appendChild(cell);
+      }
+    }
+
+    function render(){
+      renderWeekdayHeader();
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+
+      const cells = getMonthMatrix(state.view);
+      const label = new Intl.DateTimeFormat(state.locale, { month:'long', year:'numeric' }).format(state.view);
+      document.getElementById('label').textContent = label.charAt(0).toUpperCase()+label.slice(1);
+
+      // Build rows: 6 weeks. For each week, compute ISO week num from Thursday of the week (ISO rule)
+      for(let r=0; r<6; r++){
+        const startIdx = r*7;
+        const slice = cells.slice(startIdx, startIdx+7);
+        const thursday = slice[3].date; // index 3 = Thu in Mon-first grid
+        const w = getISOWeek(thursday).week;
+        const wCell = document.createElement('div');
+        wCell.className = 'weekcell';
+        wCell.setAttribute('role','rowheader');
+        wCell.title = `Settimana ${w}`;
+        wCell.textContent = String(w).padStart(2,'0');
+        grid.appendChild(wCell);
+
+        slice.forEach(({date, current})=>{
+          const cell = document.createElement('div');
+          cell.className = 'day'+(current?'':' out');
+
+          const d = document.createElement('div');
+          d.className = 'date';
+          d.textContent = date.getDate();
+          cell.appendChild(d);
+
+          if(isSameDay(date, state.today)){
+            cell.classList.add('today');
+            cell.setAttribute('aria-current','date');
+          }
+
+          grid.appendChild(cell);
+        })
+      }
+
+      document.getElementById('yearCopy').textContent = new Date().getFullYear();
+    }
+
+    function isSameDay(a,b){
+      return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    }
+
+    // Controls
+    document.getElementById('prev').addEventListener('click', ()=>{ state.view.setMonth(state.view.getMonth()-1); render();});
+    document.getElementById('next').addEventListener('click', ()=>{ state.view.setMonth(state.view.getMonth()+1); render();});
+    document.getElementById('todayBtn').addEventListener('click', ()=>{ state.view = new Date(); render();});
+    document.getElementById('localePicker').addEventListener('change', (e)=>{ state.locale = e.target.value; render(); });
+
+    // ---------- PWA: Manifest + Service Worker (via Blob) ----------
+    (function setupPWA(){
+      // Create minimal icons at runtime (a simple canvas render)
+      function makeIcon(size){
+        const c = document.createElement('canvas'); c.width=c.height=size; const ctx=c.getContext('2d');
+        // background
+        const g = ctx.createLinearGradient(0,0,size,size); g.addColorStop(0,'#0ea5e9'); g.addColorStop(1,'#38bdf8');
+        ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
+        // calendar glyph
+        ctx.fillStyle='white';
+        const r=size*0.12, w=size*0.76, h=size*0.76; const x=(size-w)/2, y=(size-h)/2;
+        roundRect(ctx,x,y,w,h,r); ctx.fill();
+        ctx.fillStyle=g; ctx.fillRect(x, y+h*0.28, w, h*0.72);
+        // week hashmarks
+        ctx.fillStyle='white';
+        for(let i=0;i<3;i++){ ctx.fillRect(x+w*0.2+i*w*0.2, y+h*0.55, w*0.08, h*0.25); }
+        return c.toDataURL('image/png');
+      }
+      function roundRect(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+      const icons = [192, 256, 512].map(s=>({ src: makeIcon(s), sizes: `${s}x${s}`, type: 'image/png', purpose: 'maskable any' }));
+
+      const manifest = {
+        name: 'Calendario con Numero Settimane',
+        short_name: 'Cal Settimane',
+        description: 'PWA offline con calendario mensile e numeri di settimana ISO‑8601.',
+        start_url: './',
+        scope: './',
+        display: 'standalone',
+        background_color: '#0b1220',
+        theme_color: '#0ea5e9',
+        icons
+      };
+      const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/manifest+json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.getElementById('manifest-link');
+      link.href = url;
+
+      // Apple icon
+      const apple = document.getElementById('apple-icon');
+      apple.href = icons[1].src;
+
+      // Service Worker from Blob
+      const swCode = `
+        const CACHE = 'cal-settimane-v1';
+        const OFFLINE_URL = '/';
+        self.addEventListener('install', e => {
+          e.waitUntil((async()=>{
+            const cache = await caches.open(CACHE);
+            await cache.addAll(['./']);
+            self.skipWaiting();
+          })());
+        });
+        self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+        self.addEventListener('fetch', e => {
+          const req = e.request;
+          e.respondWith((async()=>{
+            try{ return await fetch(req); }
+            catch{ const cache = await caches.open(CACHE); const m = await cache.match('./'); return m || Response.redirect('./'); }
+          })());
+        });
+      `;
+      const swUrl = URL.createObjectURL(new Blob([swCode], { type:'text/javascript' }));
+      if('serviceWorker' in navigator){ navigator.serviceWorker.register(swUrl); }
+    })();
+
+    // ---------- A2HS (Add to Home Screen) ----------
+    let deferredPrompt; const installBtn = document.getElementById('installBtn'); const installHint = document.getElementById('installHint');
+    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden'); installHint.classList.add('hidden'); });
+    installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; installBtn.classList.add('hidden'); installHint.classList.remove('hidden'); });
+
+    // ---------- Boot ----------
+    document.addEventListener('DOMContentLoaded', ()=>{ render(); });
+  </script>
+</body>
+</html>
