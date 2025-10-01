@@ -120,10 +120,6 @@
             <path d="M7 14h3v3H7zM14 14h3v3h-3z"/>
           </svg>
         </div>
-        <!-- <div>
-          <h1>Calendario con Numero Settimane</h1>
-          <small>Standard ISO‑8601 • PWA offline</small>
-        </div> -->
       </div>
 
       <div class="controls" role="group" aria-label="Controlli del calendario">
@@ -140,12 +136,6 @@
         </select>
       </div>
     </header>
-
-    <!-- <div class="legend">
-      <span class="badge">Lunedì come primo giorno</span>
-      <span class="badge">Numeri settimana ISO (1–53)</span>
-      <span class="badge">Installabile / Offline</span>
-    </div> --> 
 
     <section class="calendar" aria-label="Calendario mensile">
       <div class="cal-header" id="weekdayRow"></div>
@@ -351,9 +341,60 @@
     })();
 
     // ---------- A2HS (Add to Home Screen) ----------
-    let deferredPrompt; const installBtn = document.getElementById('installBtn'); const installHint = document.getElementById('installHint');
-    window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden'); installHint.classList.add('hidden'); });
-    installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; installBtn.classList.add('hidden'); installHint.classList.remove('hidden'); });
+	
+		let deferredPrompt;
+		const installBtn = document.getElementById('installBtn');
+		const installHint = document.getElementById('installHint');
+
+		const isIOS = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+		const isStandalone = () =>
+		  (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+		  window.navigator.standalone;
+
+		// Mostra sempre il pulsante (nascondi solo se già installata)
+		function updateInstallUI(){
+		  if (isStandalone()){
+			installBtn.classList.add('hidden');
+			installHint.classList.add('hidden');
+			return;
+		  }
+		  installBtn.classList.remove('hidden');
+		  if (isIOS()){
+			installHint.innerHTML = "Su iOS: tocca <strong>Condividi</strong> → <strong>Aggiungi a Home</strong>";
+		  }
+		}
+
+		window.addEventListener('beforeinstallprompt', (e)=>{
+		  e.preventDefault();
+		  deferredPrompt = e;
+		  updateInstallUI();
+		});
+
+		window.addEventListener('appinstalled', ()=>{
+		  deferredPrompt = null;
+		  installBtn.classList.add('hidden');
+		  installHint.classList.add('hidden');
+		});
+
+		installBtn.addEventListener('click', async ()=>{
+		  if (deferredPrompt){
+			deferredPrompt.prompt();
+			const { outcome } = await deferredPrompt.userChoice;
+			if (outcome === 'accepted'){
+			  installBtn.classList.add('hidden');
+			  installHint.classList.add('hidden');
+			} else {
+			  installHint.classList.remove('hidden');
+			}
+			deferredPrompt = null;
+			return;
+		  }
+		  // Se non c'è il prompt nativo (iOS/criteri non soddisfatti)
+		  installHint.classList.remove('hidden');
+		});
+
+		// Assicura UI corretta al primo caricamento
+		document.addEventListener('DOMContentLoaded', updateInstallUI);
 
     // ---------- Boot ----------
     document.addEventListener('DOMContentLoaded', ()=>{ render(); });
